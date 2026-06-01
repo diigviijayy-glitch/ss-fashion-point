@@ -51,6 +51,64 @@
   const find = id => PRODUCTS.find(p=>p.id===id);
   const isLight = h => {const c=h.replace('#','');const r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16);return (r*0.299+g*0.587+b*0.114)>200;};
 
+  /* ---------- category taxonomy (Max-style nested menu) ---------- */
+  const MENU = [
+    {key:'all', label:'Shop everything'},
+    {key:'topwear', label:'Topwear', subs:[
+      {key:'topwear', label:'All Topwear'},
+      {key:'tshirts', label:'T-Shirts'},
+      {key:'polos', label:'Polos'},
+      {key:'casual-shirts', label:'Casual Shirts'},
+      {key:'formal-shirts', label:'Formal Shirts'}
+    ]},
+    {key:'bottomwear', label:'Bottomwear', subs:[
+      {key:'bottomwear', label:'All Bottomwear'},
+      {key:'jeans', label:'Jeans'},
+      {key:'trousers', label:'Trousers'},
+      {key:'shorts', label:'Shorts & 3/4ths'}
+    ]},
+    {key:'footwear', label:'Footwear', subs:[
+      {key:'footwear', label:'All Footwear'},
+      {key:'sneakers', label:'Sneakers'},
+      {key:'sports', label:'Sports Shoes'},
+      {key:'formal-shoes', label:'Formal Shoes'}
+    ]},
+    {key:'accessories', label:'Accessories', subs:[
+      {key:'accessories', label:'All Accessories'},
+      {key:'belts', label:'Belts'},
+      {key:'caps', label:'Caps'},
+      {key:'wallets', label:'Wallets'},
+      {key:'socks', label:'Socks'}
+    ]}
+  ];
+  // keyword sets so filtering works on demo data AND whatever Shopify product types/tags you use
+  const FILTER_MAP = {
+    topwear:['tshirt','t-shirt','tee','shirt','polo','top','henley'],
+    tshirts:['tshirt','t-shirt','tee'], polos:['polo'],
+    'casual-shirts':['casual','check','flannel','oxford','shirt'], 'formal-shirts':['formal','shirt'],
+    shirts:['shirt','oxford','flannel','check','polo','tee','tshirt','t-shirt'],
+    bottomwear:['jean','denim','trouser','pant','chino','short','bottom','jogger'],
+    jeans:['jean','denim'], trousers:['trouser','pant','chino'], shorts:['short','3/4'],
+    footwear:['shoe','sneaker','runner','trainer','footwear','loafer','derby'],
+    shoes:['shoe','sneaker','runner','trainer','footwear','loafer','derby'],
+    sneakers:['sneaker','trainer','street'], sports:['sport','runner','running','train'],
+    'formal-shoes':['formal','derby','loafer','oxford'],
+    accessories:['accessor','belt','cap','wallet','sock','bag','watch','hat'],
+    belts:['belt'], caps:['cap','hat'], wallets:['wallet'], socks:['sock']
+  };
+  function labelFor(key){
+    for(const m of MENU){ if(m.key===key) return m.label; if(m.subs){ const s=m.subs.find(x=>x.key===key); if(s) return s.label; } }
+    return key;
+  }
+  function matchFilter(p,key){
+    if(!key||key==='all') return true;
+    const keys=FILTER_MAP[key];
+    const hay=[p.cat,p.name,p.brand,(p.tags||[]).join(' ')].join(' ').toLowerCase();
+    if(!keys) return hay.includes(key.toLowerCase());
+    return keys.some(k=>hay.includes(k));
+  }
+  let CURRENT_FILTER='all';
+
   /* ---------- state ---------- */
   let cart={}, WISH=new Set();
   try{ cart=JSON.parse(localStorage.getItem('ssfp_cart')||'{}'); }catch(e){ cart={}; }
@@ -91,7 +149,7 @@
   function updateWishCount(){ const b=$('#wishCount'); if(b){ const n=WISH.size; b.textContent=n; b.classList.toggle('show',n>0); } }
 
   /* ---------- product cards ---------- */
-  function stars(p){ return `<div class="prate"><span class="st">★</span><b>${p.rating.toFixed(1)}</b> <span>(${p.reviews})</span></div>`; }
+  function stars(p){ /* fake reviews removed — plug in a real reviews app (Judge.me / Shopify Reviews) here */ return ''; }
   function card(p){
     const off=Math.round((1-p.price/p.mrp)*100);
     return `<article class="product rv" data-id="${p.id}" data-cat="${p.cat}">
@@ -116,10 +174,13 @@
     </article>`;
   }
   function renderProducts(filter='all'){
+    CURRENT_FILTER=filter;
     const grid=$('#productGrid');
-    const list=filter==='all'?PRODUCTS:PRODUCTS.filter(p=>p.cat===filter);
-    grid.innerHTML=list.map(card).join('');
-    observeReveal(grid);
+    const list=PRODUCTS.filter(p=>matchFilter(p,filter));
+    grid.innerHTML = list.length
+      ? list.map(card).join('')
+      : `<div class="grid-empty"><div class="ge-ic">🧺</div><p>Nothing in <b>${labelFor(filter)}</b> just yet.<br>Fresh stock shows up here the moment it's added in store.</p><button class="btn btn-ink btn-sm" data-filter-all>Browse everything <span class="ar">→</span></button></div>`;
+    observeReveal(grid); reflectWish();
   }
 
   /* ---------- detail panel ---------- */
@@ -146,7 +207,6 @@
           <div class="di-top">
             <div>
               <div class="di-brand">${p.brand}</div>
-              <div class="di-rate"><span class="st">★</span><b>${p.rating.toFixed(1)}</b> · ${p.reviews} reviews</div>
             </div>
             <button class="di-heart ${wished?'on':''}" data-wish="${p.id}" aria-label="Save">
               <svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg>
@@ -203,13 +263,11 @@
         </div>
       </div>`;
     }).join('');
-    const sub=subtotal(), ship=sub>=1999?0:79;
+    const sub=subtotal();
     foot.innerHTML=`
-      <div class="sumrow"><span>Subtotal</span><span>${INR(sub)}</span></div>
-      <div class="sumrow"><span>Delivery</span><span>${ship?INR(ship):'FREE'}</span></div>
-      <div class="sumrow total"><span>Total</span><span>${INR(sub+ship)}</span></div>
+      <div class="sumrow total"><span>Subtotal</span><span>${INR(sub)}</span></div>
       <button class="btn btn-ink" id="goCheckout" style="width:100%;justify-content:center">Checkout <span class="ar">→</span></button>
-      ${sub<1999?`<div class="freeship">Add ${INR(1999-sub)} more for free delivery</div>`:`<div class="freeship">✓ You've unlocked free delivery</div>`}`;
+      <div class="freeship">Taxes &amp; delivery calculated at checkout</div>`;
   }
 
   /* ---------- drawers ---------- */
@@ -233,10 +291,9 @@
   const co=$('#checkout');
   function openCheckout(){
     const sub=subtotal(); if(sub===0) return;
-    const ship=sub>=1999?0:79;
     $('#coSummary').innerHTML=items().map(i=>`<div class="sl"><span>${i.qty}× ${i.name}${i.size?' ('+i.size+')':''}</span><span>${INR(i.price*i.qty)}</span></div>`).join('')
-      +`<div class="sl"><span>Delivery</span><span>${ship?INR(ship):'FREE'}</span></div>`
-      +`<div class="sl tot"><span>Total</span><span>${INR(sub+ship)}</span></div>`;
+      +`<div class="sl tot"><span>Subtotal</span><span>${INR(sub)}</span></div>`
+      +`<div class="sl" style="font-size:12px;color:var(--ink-3)"><span>Taxes &amp; delivery</span><span>At checkout</span></div>`;
     co.classList.add('open'); document.body.classList.add('lock');
     $('#coForm').style.display=''; $('#coSuccess').style.display='none';
   }
@@ -244,20 +301,36 @@
   function placeOrder(e){
     e.preventDefault(); const f=e.target;
     const name=f.name.value.trim(), phone=f.phone.value.trim(), addr=f.address.value.trim(), method=f.method.value;
-    const sub=subtotal(), ship=sub>=1999?0:79, tot=sub+ship;
+    const sub=subtotal(), tot=sub;
     let msg=`*New order — SS Fashion Point*%0A%0A`;
     items().forEach(i=>{ msg+=`• ${i.qty}× ${i.name}${i.size?' / '+i.size:''}${i.color?' / '+i.color:''} — ${INR(i.price*i.qty)}%0A`; });
-    msg+=`%0A*Total: ${INR(tot)}* (${ship?'+ '+INR(ship)+' delivery':'free delivery'})%0A%0A`;
+    msg+=`%0A*Subtotal: ${INR(tot)}* (delivery & taxes as per store)%0A%0A`;
     msg+=`Name: ${encodeURIComponent(name)}%0APhone: ${encodeURIComponent(phone)}%0A${method==='delivery'?'Deliver to: '+encodeURIComponent(addr):'Pickup at store'}`;
     $('#waLink').href=`https://wa.me/919967747796?text=${msg}`;
     $('#coForm').style.display='none'; $('#coSuccess').style.display='block';
     cart={}; saveCart(); renderCart();
   }
 
-  /* ---------- mobile menu ---------- */
+  /* ---------- nav menu (nested, Max-style) ---------- */
   const mm=$('#mobMenu');
-  const openMenu=()=>{ mm.classList.add('open'); document.body.classList.add('lock'); };
-  const closeMenu=()=>{ mm.classList.remove('open'); document.body.classList.remove('lock'); };
+  function renderMenuList(node){
+    const list=$('#mmList'), title=$('#mmTitle'), back=$('#mmBack');
+    if(!list) return;
+    const arr = node ? node.subs : MENU;
+    title.textContent = node ? node.label : 'Shop';
+    if(back) back.hidden = !node;
+    list.innerHTML = arr.map(it=>{
+      if(it.subs){
+        return `<button class="mm-row" data-cat="${it.key}"><span class="mm-row-l">${it.label}</span><span class="mm-row-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button>`;
+      }
+      return `<button class="mm-row leaf" data-filter="${it.key}"><span class="mm-row-l">${it.label}</span><span class="mm-row-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span></button>`;
+    }).join('');
+  }
+  function openMenu(){ renderMenuList(null); mm.classList.add('open'); document.body.classList.add('lock'); }
+  function closeMenu(){ mm.classList.remove('open'); if(!anySideOpen()) document.body.classList.remove('lock'); }
+  function menuDrillTo(key){ const node=MENU.find(m=>m.key===key&&m.subs); if(node) renderMenuList(node); }
+  function menuBack(){ renderMenuList(null); }
+  function menuPickFilter(key){ closeMenu(); applyFilter(key); }
 
   /* ---------- reveal ---------- */
   let io;
@@ -271,16 +344,14 @@
     bar.classList.toggle('solid',window.scrollY>40); bar.classList.toggle('hero-mode',!past); }
 
   /* ---------- filters ---------- */
+  function applyFilter(key){
+    $$('.catchip').forEach(x=>x.classList.toggle('active',x.dataset.filter===key));
+    renderProducts(key);
+    const shop=$('#shop'); if(shop){ const y=shop.getBoundingClientRect().top+window.scrollY-78; window.scrollTo({top:Math.max(0,y),behavior:'smooth'}); }
+  }
   function initFilters(){
-    $$('.catchip').forEach(chip=>chip.addEventListener('click',()=>{
-      $$('.catchip').forEach(x=>x.classList.toggle('active',x===chip));
-      renderProducts(chip.dataset.filter); reflectWish();
-      const y=$('#shop').getBoundingClientRect().top+window.scrollY-90;
-      window.scrollTo({top:Math.max(y,$('#catstrip').getBoundingClientRect().bottom+window.scrollY-70),behavior:'smooth'});
-    }));
-    $$('.cat[data-filter]').forEach(c=>c.addEventListener('click',e=>{
-      const f=c.dataset.filter; const chip=$(`.catchip[data-filter="${f}"]`); if(chip) chip.click();
-    }));
+    $$('.catchip').forEach(chip=>chip.addEventListener('click',()=>applyFilter(chip.dataset.filter)));
+    $$('.cat[data-filter]').forEach(c=>c.addEventListener('click',e=>{ e.preventDefault(); applyFilter(c.dataset.filter); }));
   }
 
   /* ---------- countdown ---------- */
@@ -369,53 +440,19 @@
       foot.innerHTML=`<button class="btn btn-line" data-act="logout" style="width:100%;justify-content:center">Log out</button>`;
       return;
     }
-    if(acct.view==='choose'){
-      title.textContent='Sign in';
-      body.innerHTML=`
-        <p class="auth-lead">Sign in or create your <b>SS Fashion Point</b> account — save your wishlist, track orders and check out faster.</p>
-        <div class="social">
-          <button class="social-btn" data-oauth="google">${GOOGLE_SVG}<span>Continue with Google</span></button>
-          <button class="social-btn" data-oauth="apple">${APPLE_SVG}<span>Continue with Apple</span></button>
-        </div>
-        <div class="divider">or</div>
-        <button class="btn btn-ink" data-go="mobile" style="width:100%;justify-content:center">Continue with mobile number</button>
-        <p class="legal">By continuing you agree to our <a href="#">Terms of Use</a> &amp; <a href="#">Privacy Policy</a>.</p>`;
-    } else if(acct.view==='google'||acct.view==='apple'){
-      const prov=acct.view, list=SAMPLE[prov];
-      title.textContent=prov==='google'?'Google':'Apple';
-      body.innerHTML=`
-        <span class="auth-back" data-go="choose">← back</span>
-        <p class="auth-lead">Choose an account to continue to <b>SS Fashion Point</b></p>
-        <div class="gpick">
-          ${list.map((s,i)=>`<button data-pick="${prov}:${i}"><span class="gava" style="background:${s.c}">${initialsOf(s.name)}</span><span class="gmeta"><b>${s.name}</b><span>${s.email}</span></span></button>`).join('')}
-          <button data-go="mobile"><span class="gava" style="background:var(--ink-3);font-size:20px">+</span><span class="gmeta"><b>Use a mobile number instead</b></span></button>
-        </div>`;
-    } else if(acct.view==='mobile'){
-      title.textContent='Mobile';
-      body.innerHTML=`
-        <span class="auth-back" data-go="choose">← back</span>
-        <p class="auth-lead">Enter your mobile number and we'll text you a one-time verification code.</p>
-        <div class="field"><label>Mobile number</label>
-          <div class="phone-field"><span class="cc">🇮🇳 +91</span><input id="acctMobile" inputmode="numeric" maxlength="10" placeholder="98765 43210" value="${acct.mobile}" autocomplete="tel"></div>
-        </div>`;
-      foot.innerHTML=`<button class="btn btn-accent" data-act="sendOtp" style="width:100%;justify-content:center">Send OTP <span class="ar">→</span></button>`;
-    } else if(acct.view==='otp'){
-      title.textContent='Verify';
-      body.innerHTML=`
-        <span class="auth-back" data-go="mobile">← change number</span>
-        <p class="auth-lead">Enter the 4-digit code sent to <b>+91 ${acct.mobile}</b></p>
-        <div class="otp-row">${[0,1,2,3].map(i=>`<input inputmode="numeric" maxlength="1" data-otp="${i}">`).join('')}</div>
-        <p class="hint-line">Demo code: <b>${acct.sentOtp}</b> &nbsp;·&nbsp; <span class="linklike" data-act="resend">Resend</span></p>`;
-      foot.innerHTML=`<button class="btn btn-accent" data-act="verifyOtp" style="width:100%;justify-content:center">Verify &amp; continue</button>`;
-      setTimeout(()=>{ const f=$('#acctBody [data-otp="0"]'); if(f) f.focus(); },60);
-    } else if(acct.view==='profile'){
-      title.textContent='Almost there';
-      body.innerHTML=`
-        <p class="auth-lead">You're verified ✓ &nbsp;Tell us your name to finish setting up your account.</p>
-        <div class="field"><label>Full name</label><input id="acctName" placeholder="Your name" value="${acct.name}" autocomplete="name"></div>
-        <div class="field"><label>Email <span style="text-transform:none;letter-spacing:0">(optional)</span></label><input id="acctEmail" type="email" placeholder="you@email.com" value="${acct.email}" autocomplete="email"></div>`;
-      foot.innerHTML=`<button class="btn btn-accent" data-act="createAcct" style="width:100%;justify-content:center">Create account</button>`;
-    }
+    title.textContent='Account';
+    const base='https://'+SHOPIFY.domain;
+    body.innerHTML=`
+      <p class="auth-lead">Sign in to your <b>SS Fashion Point</b> account to track orders, save your wishlist across devices and check out faster.</p>
+      <div class="social">
+        <a class="btn btn-ink" href="${base}/account/login" target="_blank" rel="noopener" style="width:100%;justify-content:center">Sign in <span class="ar">→</span></a>
+        <a class="btn btn-line" href="${base}/account/register" target="_blank" rel="noopener" style="width:100%;justify-content:center">Create an account</a>
+      </div>
+      <div class="acct-rows" style="margin-top:20px">
+        <button class="acct-row" data-act="goWish"><span class="ar-ic">${ICN.heart}</span><span class="ar-t">Wishlist</span><span class="ar-v">${WISH.size} saved</span><span class="ar-ch">${ICN.chev}</span></button>
+        <button class="acct-row" data-act="goCart"><span class="ar-ic">${ICN.bag}</span><span class="ar-t">Your bag</span><span class="ar-v">${count()} item${count()===1?'':'s'}</span><span class="ar-ch">${ICN.chev}</span></button>
+      </div>
+      <div class="data-note"><span class="dn-ic">${ICN.lock}</span><div>Secure sign-in &amp; checkout are handled by Shopify — we never see your password, and your orders land straight in the store dashboard.</div></div>`;
   }
 
   function createAccount(p){
@@ -450,7 +487,7 @@
   }
 
   function bindAccountWishlist(){
-    $('#accountOpen').addEventListener('click',openAcct);
+    const accBtn=$('#accountOpen'); if(accBtn) accBtn.addEventListener('click',openAcct);
     $('#acctClose').addEventListener('click',closeAcct);
     $('#acctScrim').addEventListener('click',closeAcct);
     $('#wishOpen').addEventListener('click',openWish);
@@ -510,6 +547,7 @@
       if(e.target.closest('[data-detadd]')){ addToCart(detail.id,detail); return; }
       if(e.target.closest('[data-detbuy]')){ addToCart(detail.id,detail); closeDetail(); closeCart(); setTimeout(startCheckout,260); return; }
       if(e.target.closest('[data-detclose]')){ closeDetail(); return; }
+      if(e.target.closest('[data-filter-all]')){ applyFilter('all'); return; }
       const prod=e.target.closest('.product'); if(prod){ openDetail(prod.dataset.id); return; }
     });
     $('#cartOpen').addEventListener('click',openCart);
@@ -521,7 +559,13 @@
     $('#coForm').addEventListener('submit',placeOrder);
     $('#menuOpen').addEventListener('click',openMenu);
     $('#menuClose').addEventListener('click',closeMenu);
-    $$('#mobMenu nav a').forEach(a=>a.addEventListener('click',closeMenu));
+    const mmBack=$('#mmBack'); if(mmBack) mmBack.addEventListener('click',menuBack);
+    const mmList=$('#mmList'); if(mmList) mmList.addEventListener('click',e=>{
+      const cat=e.target.closest('[data-cat]'); if(cat){ menuDrillTo(cat.dataset.cat); return; }
+      const lf=e.target.closest('[data-filter]'); if(lf){ menuPickFilter(lf.dataset.filter); return; }
+    });
+    $$('#mobMenu [data-mmclose]').forEach(a=>a.addEventListener('click',closeMenu));
+    const mmAcc=$('#mmAccount'); if(mmAcc) mmAcc.addEventListener('click',()=>{ closeMenu(); setTimeout(openAcct,260); });
     document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeDetail(); closeCart(); closeCheckout(); closeMenu(); } });
     window.addEventListener('scroll',onScroll,{passive:true});
   }
@@ -559,6 +603,7 @@
       img: (n.featuredImage && n.featuredImage.url) || '',
       tag: tagsU.includes('HOT') ? 'HOT' : (tagsU.includes('NEW') ? 'NEW' : ''),
       rating: 4.8, reviews: 0,
+      tags: (n.tags || []),
       desc: n.description || '',
       colors: (colorsRaw.length ? colorsRaw : ['Default']).map(c => ({ n: c, h: hexFor(c) })),
       sizes: sizes.length ? sizes : ['One size'],
@@ -614,8 +659,86 @@
   }
   function startCheckout(){ if(SHOPIFY_ACTIVE) shopifyCheckout(); else openCheckout(); }
 
+  /* ---------- hero slideshow (photo mode) ---------- */
+  function heroSlideshow(){
+    const imgs=$$('#heroMedia img'); if(imgs.length<2) return;
+    let i=0; setInterval(()=>{
+      if(document.body.dataset.hero!=='photo') return;
+      imgs[i].classList.remove('on'); i=(i+1)%imgs.length; imgs[i].classList.add('on');
+    },4800);
+  }
+
+  /* ---------- hero film (video) + scroll choreography ---------- */
+  function heroFilm(){
+    const hero=$('.hero'), vid=$('#heroVid'), inner=$('.hero-inner');
+    if(!hero||!vid) return;
+    const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+    let dur=vid.duration||5.8, ready=false, primed=false, lastT=-1;
+    const T0=0.10, TEND=0.08; // trim a hair off head/tail
+
+    const isFilm=()=>document.body.dataset.hero==='film';
+
+    /* Prime the decoder once on first gesture (play→pause) so scroll-driven
+       currentTime seeks actually paint. We never leave it playing — it scrubs. */
+    function prime(){
+      if(primed||!vid.src) return; primed=true;
+      try{
+        const p=vid.play&&vid.play();
+        if(p&&p.then) p.then(()=>{ try{vid.pause();}catch(e){} render(true); }).catch(()=>{});
+        else { try{vid.pause();}catch(e){} }
+      }catch(e){}
+    }
+
+    // Load the clip as a blob (reliable cross-device seeking; silent fallback to poster)
+    fetch('assets/hero-model.mp4').then(r=>{ if(!r.ok) throw 0; return r.blob(); })
+      .then(b=>{ vid.src=URL.createObjectURL(b); })
+      .catch(()=>{ vid.classList.add('hf-fail'); });
+
+    vid.addEventListener('loadedmetadata',()=>{ dur=vid.duration||dur; });
+    vid.addEventListener('loadeddata',()=>{ ready=true; render(true); });
+    vid.addEventListener('canplay',()=>{ ready=true; });
+    ['touchstart','pointerdown','scroll','wheel','keydown','click'].forEach(ev=>
+      addEventListener(ev,prime,{once:true,passive:true}));
+
+    function progress(){
+      const track=hero.offsetHeight - innerHeight;       // scrollable distance while pinned
+      if(track<=0) return 0;
+      return Math.min(1,Math.max(0,(window.scrollY||0)/track));
+    }
+
+    function render(force){
+      if(!isFilm()) return;
+      const p=progress();
+      hero.style.setProperty('--hp',p.toFixed(3));
+      vid.style.setProperty('--hf-scale',(1+0.10*p).toFixed(3));
+      if(inner){
+        inner.style.transform='translateY('+(p*-18).toFixed(1)+'px)';
+        inner.style.opacity='1';   // keep the headline present through the scrub (no empty cream)
+      }
+      if(ready && !reduce){
+        if(!vid.paused){ try{vid.pause();}catch(e){} }
+        const t=T0 + p*Math.max(0.05,(dur-T0-TEND));
+        if(force || Math.abs(t-lastT)>0.018){ lastT=t; try{ vid.currentTime=t; }catch(e){} }
+      }
+    }
+
+    let ticking=false;
+    function req(){ if(!ticking){ ticking=true; requestAnimationFrame(()=>{ ticking=false; render(false); }); } }
+    addEventListener('scroll',req,{passive:true});
+    addEventListener('resize',req,{passive:true});
+    render(true);
+
+    // expose for the Tweaks hero toggle: re-sync when switching modes
+    window.__ssfpHeroSync=function(){
+      try{ vid.pause(); }catch(e){}
+      lastT=-1;
+      if(isFilm()){ render(true); }
+      else if(inner){ inner.style.transform=''; inner.style.opacity=''; }
+    };
+  }
+
   function init(){
-    renderProducts('all'); renderCart(); initFilters(); initCountdown(); observeReveal(); bind(); bindAccountWishlist(); updateAuthIcon(); updateWishCount(); onScroll(); heroIntro();
+    renderProducts('all'); renderCart(); initFilters(); initCountdown(); observeReveal(); bind(); bindAccountWishlist(); updateAuthIcon(); updateWishCount(); onScroll(); heroIntro(); heroFilm(); heroSlideshow();
     loadShopify();
   }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);

@@ -14,8 +14,10 @@
     walnut:{label:'Walnut',swatch:['#4f3826','#f2eee5','#16130f'],vars:{'--accent':'#4f3826','--accent-2':'#38271a','--accent-soft':'#e3d5c4'}}
   };
 
-  let state = {mood:'leather',energy:50,edge:'soft'};
+  let state = {mood:'leather',energy:50,edge:'soft',hero:'film'};
   try{ const s=JSON.parse(localStorage.getItem('ssfp-tweaks')||'null'); if(s) Object.assign(state,s); }catch(e){}
+  // one-time migration: film hero (small, soft-edged) is the default again
+  if(!state.heroV5){ state.hero='film'; state.heroV5=1; }
 
   function save(){ try{ localStorage.setItem('ssfp-tweaks',JSON.stringify(state)); }catch(e){} }
 
@@ -29,7 +31,12 @@
     root.style.setProperty('--grain-op',(0.03+0.06*(e/100)).toFixed(3));
   }
   function applyEdge(v){ document.body.dataset.edge=v; }
-  function applyAll(){ applyMood(state.mood); applyEnergy(state.energy); applyEdge(state.edge); }
+  function applyHero(v){
+    const map={film:'film',figure:'figure',photo:'photo'};
+    document.body.dataset.hero = map[v]||'film';
+    if(window.__ssfpHeroSync) window.__ssfpHeroSync();
+  }
+  function applyAll(){ applyMood(state.mood); applyEnergy(state.energy); applyEdge(state.edge); applyHero(state.hero); }
 
   /* build panel */
   const panel=document.createElement('div');
@@ -37,6 +44,12 @@
   panel.innerHTML=`
     <div class="twk-hd" id="twkDrag"><b><i></i>Tweaks</b><button class="twk-x" id="twkClose" aria-label="Close">✕</button></div>
     <div class="twk-body">
+      <div class="twk-sect">Hero<span class="hint">Front-page header style</span></div>
+      <div class="twk-seg twk-seg-col" id="twkHero">
+        <button data-v="film">Banna film</button>
+        <button data-v="figure">Banna figure</button>
+        <button data-v="photo">Storefront photos</button>
+      </div>
       <div class="twk-sect">Mood<span class="hint">Swap the whole colour identity</span></div>
       <div class="twk-chips" id="twkMood"></div>
       <div class="twk-sect">Energy<span class="hint">Pace of the marquees &amp; motion</span></div>
@@ -58,8 +71,30 @@
   openBtn.setAttribute('aria-label','Open tweaks panel');
   openBtn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>`;
   document.body.appendChild(openBtn);
+
+  /* ---- editor-only visibility (host Tweaks protocol) ----
+     The panel + gear are design tools — they must appear ONLY inside the
+     editor preview, never on the published Shopify site. We listen for the
+     toolbar's activate/deactivate messages and stay hidden by default. The
+     chosen tweaks (hero/mood/etc.) still apply to the live site via applyAll(). */
+  let enabled=false;
+  function setEnabled(on){
+    enabled=on;
+    openBtn.style.display = on ? 'grid' : 'none';
+    if(on){ panel.classList.add('open'); } else { panel.classList.remove('open'); }
+  }
   openBtn.addEventListener('click',()=>{ panel.classList.toggle('open'); });
-  panel.querySelector('#twkClose').addEventListener('click',()=>panel.classList.remove('open'));
+  panel.querySelector('#twkClose').addEventListener('click',()=>{
+    panel.classList.remove('open');
+    try{ window.parent && window.parent.postMessage({type:'__edit_mode_dismissed'},'*'); }catch(e){}
+  });
+  addEventListener('message',function(e){
+    const t=e.data&&e.data.type;
+    if(t==='__activate_edit_mode') setEnabled(true);
+    else if(t==='__deactivate_edit_mode') setEnabled(false);
+  });
+  setEnabled(false); // hidden until the editor turns Tweaks on
+  try{ window.parent && window.parent.postMessage({type:'__edit_mode_available'},'*'); }catch(e){}
 
   /* mood chips */
   const moodWrap=panel.querySelector('#twkMood');
@@ -81,10 +116,16 @@
     state.edge=b.dataset.v; applyEdge(b.dataset.v); save(); syncUI();
   });
 
+  panel.querySelector('#twkHero').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-v]'); if(!b) return;
+    state.hero=b.dataset.v; applyHero(b.dataset.v); save(); syncUI();
+  });
+
   function syncUI(){
     moodWrap.querySelectorAll('.twk-chip').forEach(c=>c.dataset.on=(c.dataset.v===state.mood)?'1':'0');
     energyEl.value=state.energy; energyEl.style.setProperty('--fill',state.energy+'%');
     panel.querySelectorAll('#twkEdge button').forEach(b=>b.dataset.on=(b.dataset.v===state.edge)?'1':'0');
+    panel.querySelectorAll('#twkHero button').forEach(b=>b.dataset.on=(b.dataset.v===state.hero)?'1':'0');
   }
 
   /* drag */
