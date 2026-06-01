@@ -10,8 +10,8 @@
      Leave them as the YOUR-... placeholders to keep demo products.
      ============================================================ */
   const SHOPIFY = {
-    domain : "qg006p-r6.myshopify.com",        // e.g. ss-fashion-point.myshopify.com
-    token  : "8011497f71c190bf47d8607789fa4df0",    // Storefront API *public* access token
+    domain : "qg006p-r6.myshopify.com",          // e.g. ss-fashion-point.myshopify.com
+    token  : "8011497f71c190bf47d8607789fa4df0", // Storefront API *public* access token
     version: "2024-10"
   };
 
@@ -503,12 +503,12 @@
       const add=e.target.closest('[data-add]'); if(add){ e.stopPropagation(); addToCart(add.dataset.add); return; }
       const q=e.target.closest('[data-q]'); if(q){ setQty(q.dataset.key,+q.dataset.q); return; }
       const rm=e.target.closest('[data-rm]'); if(rm){ removeItem(rm.dataset.rm); return; }
-      if(e.target.closest('#goCheckout')){ closeCart(); setTimeout(openCheckout,250); return; }
+      if(e.target.closest('#goCheckout')){ closeCart(); setTimeout(startCheckout,250); return; }
       const sw=e.target.closest('[data-color]'); if(sw){ detail.color=+sw.dataset.color; renderDetail(); return; }
       const sz=e.target.closest('[data-size]'); if(sz&&!sz.classList.contains('oos')){ detail.size=+sz.dataset.size; renderDetail(); return; }
       const ft=e.target.closest('[data-fit]'); if(ft){ detail.fit=+ft.dataset.fit; renderDetail(); return; }
       if(e.target.closest('[data-detadd]')){ addToCart(detail.id,detail); return; }
-      if(e.target.closest('[data-detbuy]')){ addToCart(detail.id,detail); closeDetail(); closeCart(); setTimeout(openCheckout,260); return; }
+      if(e.target.closest('[data-detbuy]')){ addToCart(detail.id,detail); closeDetail(); closeCart(); setTimeout(startCheckout,260); return; }
       if(e.target.closest('[data-detclose]')){ closeDetail(); return; }
       const prod=e.target.closest('.product'); if(prod){ openDetail(prod.dataset.id); return; }
     });
@@ -580,9 +580,39 @@
       const edges = json && json.data && json.data.products && json.data.products.edges;
       if(!edges || !edges.length){ console.warn('Shopify returned no products', json && json.errors); return; }
       PRODUCTS = edges.map(e => mapShopifyProduct(e.node));
+      SHOPIFY_ACTIVE = true;
       renderProducts('all'); renderCart();
     }catch(err){ console.warn('Shopify load failed — using demo products:', err); }
   }
+
+  /* ===================== SHOPIFY CHECKOUT ===================== */
+  let SHOPIFY_ACTIVE = false;
+  function variantIdFor(p, colorName, sizeValue){
+    if(!p || !p._variants || !p._variants.length) return null;
+    const match = p._variants.find(v => {
+      const o = {}; (v.selectedOptions || []).forEach(x => o[x.name.toLowerCase()] = x.value);
+      return (!('size' in o) || o.size === sizeValue) && (!('color' in o) || o.color === colorName);
+    });
+    return (match || p._variants[0]).id;
+  }
+  async function shopifyCheckout(){
+    const lines = [];
+    items().forEach(i => { const p = find(i.id); const id = variantIdFor(p, i.color, i.size); if(id) lines.push({ merchandiseId: id, quantity: i.qty }); });
+    if(!lines.length){ openCheckout(); return; }
+    try{
+      const res = await fetch(`https://${SHOPIFY.domain}/api/${SHOPIFY.version}/graphql.json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY.token },
+        body: JSON.stringify({ query: `mutation($lines:[CartLineInput!]!){ cartCreate(input:{lines:$lines}){ cart{ checkoutUrl } userErrors{ message } } }`, variables: { lines } })
+      });
+      const json = await res.json();
+      const url = json && json.data && json.data.cartCreate && json.data.cartCreate.cart && json.data.cartCreate.cart.checkoutUrl;
+      if(url){ window.location.href = url; return; }
+      console.warn('Shopify checkout failed:', json && (json.errors || (json.data && json.data.cartCreate && json.data.cartCreate.userErrors)));
+    }catch(err){ console.warn('Shopify checkout error:', err); }
+    openCheckout(); // fallback to the WhatsApp order form
+  }
+  function startCheckout(){ if(SHOPIFY_ACTIVE) shopifyCheckout(); else openCheckout(); }
 
   function init(){
     renderProducts('all'); renderCart(); initFilters(); initCountdown(); observeReveal(); bind(); bindAccountWishlist(); updateAuthIcon(); updateWishCount(); onScroll(); heroIntro();
