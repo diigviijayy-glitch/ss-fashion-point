@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="css/styles.css" />
 </head>
-<body>
+<body data-hero="film">
 
 <div class="grain"></div>
 
@@ -25,14 +25,6 @@
     <span class="nm"><b>Fashion</b><b>Point</b></span>
   </a>
   <div class="bar-actions">
-    <a href="#shop" class="btn btn-ghost btn-sm desk">Shop</a>
-    <button class="iconbtn" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">
-      <svg class="th-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M22 12h-2.2M4.2 12H2M19 5l-1.6 1.6M6.6 17.4 5 19M19 19l-1.6-1.6M6.6 6.6 5 5"/></svg>
-      <svg class="th-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 13.2A8.4 8.4 0 1 1 10.8 3a6.6 6.6 0 0 0 10.2 10.2Z"/></svg>
-    </button>
-    <button class="iconbtn" id="accountOpen" aria-label="Account">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
-    </button>
     <button class="iconbtn" id="wishOpen" aria-label="Wishlist">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg>
       <span class="badge" id="wishCount">0</span>
@@ -47,29 +39,61 @@
   </div>
 </header>
 
-<!-- ===== MOBILE MENU ===== -->
+<!-- ===== NAV MENU (nested, Max-style) ===== -->
 <div class="mobmenu" id="mobMenu">
-  <button class="iconbtn mm-close" id="menuClose" aria-label="Close menu" style="border-color:var(--bone-fix)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
-  </button>
-  <nav>
-    <a href="#shop">Shop</a>
-    <a href="#categories">Categories</a>
-    <a href="#deal">Deals</a>
-    <a href="#visit">Visit</a>
-  </nav>
-  <div class="mm-foot">
-    <button class="mm-theme" id="themeToggleM">
-      <span class="mt-ic"></span><span class="mt-lbl">Switch theme</span>
+  <div class="mm-head">
+    <button class="mm-back" id="mmBack" aria-label="Back" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
     </button>
-    Sevashram Chauraha, near Kanak Hotel · Udaipur<br>+91 99677 47796
+    <span class="mm-title" id="mmTitle">Menu</span>
+    <button class="iconbtn mm-close" id="menuClose" aria-label="Close menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <div class="mm-scroll" id="mmList"></div>
+  <div class="mm-foot">
+    <button class="mm-account" id="mmAccount">
+      <span class="mma-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg></span>
+      <span class="mma-t"><b>Sign in / Sign up</b><small>Orders, wishlist &amp; faster checkout</small></span>
+      <span class="mma-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
+    </button>
+    <div class="mm-links">
+      <a href="#visit" data-mmclose>Store Locator</a>
+      <a href="#visit" data-mmclose>Contact Us</a>
+      <a href="#deal" data-mmclose>Deals</a>
+      <button class="mm-theme" id="themeToggleM"><span class="mt-ic"></span><span class="mt-lbl">Switch theme</span></button>
+    </div>
+    <div class="mm-addr">Sevashram Chauraha, near Kanak Hotel · Udaipur<br>+91 99677 47796</div>
   </div>
 </div>
 
 <!-- ===== HERO ===== -->
-<section class="hero" id="top">
-  <div class="hero-media">
-    <img src="assets/storefront.jpg" alt="SS Fashion Point store" fetchpriority="high">
+<section class="hero" id="top" data-screen-label="Hero">
+  <div class="hero-pin">
+  <div class="hero-film" aria-hidden="true">
+    <div class="hf-crop">
+      <video class="hf-vid" id="heroVid" poster="assets/hero-poster.jpg"
+        muted loop playsinline preload="auto" webkit-playsinline x5-playsinline disablepictureinpicture></video>
+    </div>
+    <span class="hf-glow"></span>
+    <span class="hf-grade"></span>
+    <span class="hf-floor"></span>
+  </div>
+  <div class="hero-stage" aria-hidden="true">
+    <span class="hs-word">बन्ना</span>
+    <span class="hs-glow"></span>
+    <span class="hs-ring"></span>
+    <span class="hs-ring hs-ring2"></span>
+    <img class="hs-fig" src="assets/banna.png" alt="Banna — Udaipur street portrait">
+    <span class="hs-floor"></span>
+    <span class="hs-tag mono">Est. Udaipur · Banna Basic</span>
+  </div>
+  <div class="hero-media" id="heroMedia">
+    <img src="assets/storefront.jpg" alt="SS Fashion Point storefront, Udaipur" class="on" fetchpriority="high">
+    <img src="assets/jeans.jpg" alt="Denim wall" loading="lazy">
+    <img src="assets/shoes.jpg" alt="Sneaker wall" loading="lazy">
+    <img src="assets/shirts.jpg" alt="Shirt stacks" loading="lazy">
+    <img src="assets/fit.jpg" alt="Street fit" loading="lazy">
   </div>
   <div class="hero-inner">
     <div class="hero-kicker mono"><span class="dot"></span> Udaipur · Men's Wear &amp; Shoes</div>
@@ -78,7 +102,7 @@
       <span class="ln"><span class="it">BASIC.</span></span>
     </h1>
     <div class="hero-sub">
-      <p>Premium men's clothing &amp; sneakers, curated for the streets of Udaipur. Tees, jeans, shirts &amp; kicks — browse, pick, done.</p>
+      <p>Banna-approved fits, straight off the racks at Sevashram Chauraha. Tees, denim, shirts &amp; kicks — Udaipur's cleanest men's edit.</p>
       <div class="hero-cta">
         <a href="#shop" class="btn btn-accent">Shop the drop <span class="ar">→</span></a>
         <a href="#categories" class="btn btn-ghost">Browse categories</a>
@@ -86,6 +110,7 @@
     </div>
   </div>
   <div class="scroll-hint">Scroll<span class="bar-line"></span></div>
+  </div>
 </section>
 
 <!-- ===== MARQUEE 1 ===== -->
@@ -132,6 +157,10 @@
       <button class="catchip" data-filter="shoes">
         <span class="av"><img src="assets/shoes.jpg" alt="Shoes"></span>
         <span class="lbl">Shoes</span>
+      </button>
+      <button class="catchip" data-filter="accessories">
+        <span class="av allchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg></span>
+        <span class="lbl">Accessories</span>
       </button>
     </div>
 
