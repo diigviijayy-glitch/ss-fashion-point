@@ -3,35 +3,47 @@
    ============================================================ */
 (function(){
   'use strict';
+
+  /* ============================================================
+     SHOPIFY HEADLESS — edit these 2 values to connect a store.
+     To hand off to a client later, just replace these two lines.
+     Leave them as the YOUR-... placeholders to keep demo products.
+     ============================================================ */
+  const SHOPIFY = {
+    domain : "qg006p-r6.myshopify.com",        // e.g. ss-fashion-point.myshopify.com
+    token  : "8011497f71c190bf47d8607789fa4df0",    // Storefront API *public* access token
+    version: "2024-10"
+  };
+
   const $ = (s,c=document) => c.querySelector(s);
   const $$ = (s,c=document) => [...c.querySelectorAll(s)];
   const INR = n => '₹'+n.toLocaleString('en-IN');
 
   /* ---------- catalogue ---------- */
   const SZ_TOP=['S','M','L','XL'], SZ_JEAN=['30','32','34','36'], SZ_SHOE=['7','8','9','10'];
-  const PRODUCTS = [
-    {id:'p1',cat:'tshirts',brand:'Polo Ralph Lauren',name:'Classic Pony Tee',price:999,mrp:1499,img:'assets/photos/p_tee1.jpg',tag:'HOT',rating:4.9,reviews:136,
+  let PRODUCTS = [
+    {id:'p1',cat:'tshirts',brand:'Polo Ralph Lauren',name:'Classic Pony Tee',price:999,mrp:1499,img:'assets/p_tee1.jpg',tag:'HOT',rating:4.9,reviews:136,
       desc:'A premium cotton tee with the signature embroidered pony. Soft, breathable and built to keep its shape wash after wash.',
       colors:[{n:'Navy',h:'#1b2a4a'},{n:'White',h:'#f1efe6'},{n:'Sky',h:'#9db9d6'}],sizes:SZ_TOP,fits:['Regular','Oversized']},
-    {id:'p2',cat:'shirts',brand:'Tommy Hilfiger',name:'Oxford Casual Shirt',price:1299,mrp:1899,img:'assets/photos/p_shirt1.jpg',tag:'NEW',rating:4.7,reviews:59,
+    {id:'p2',cat:'shirts',brand:'Tommy Hilfiger',name:'Oxford Casual Shirt',price:1299,mrp:1899,img:'assets/p_shirt1.jpg',tag:'NEW',rating:4.7,reviews:59,
       desc:'A crisp oxford-weave shirt that moves from desk to dinner. Mother-of-pearl buttons and a tailored-but-easy cut.',
       colors:[{n:'Sky',h:'#aac4dd'},{n:'White',h:'#f1efe6'},{n:'Stone',h:'#d8cdb8'}],sizes:SZ_TOP,fits:['Slim','Regular']},
-    {id:'p3',cat:'jeans',brand:"Levi's",name:'511 Slim Denim',price:1799,mrp:2499,img:'assets/photos/p_jeans1.jpg',tag:'NEW',rating:4.8,reviews:212,
+    {id:'p3',cat:'jeans',brand:"Levi's",name:'511 Slim Denim',price:1799,mrp:2499,img:'assets/p_jeans1.jpg',tag:'NEW',rating:4.8,reviews:212,
       desc:'The 511 — a modern slim that sits below the waist with a little stretch. An everyday denim that just works.',
       colors:[{n:'Indigo',h:'#2f3b55'},{n:'Mid Blue',h:'#5d7290'},{n:'Black',h:'#20232a'}],sizes:SZ_JEAN,fits:['Slim','Tapered']},
-    {id:'p4',cat:'shoes',brand:'Puma',name:'Street Runner',price:2299,mrp:3299,img:'assets/photos/p_shoe1.jpg',tag:'HOT',rating:5.0,reviews:29,
+    {id:'p4',cat:'shoes',brand:'Puma',name:'Street Runner',price:2299,mrp:3299,img:'assets/p_shoe1.jpg',tag:'HOT',rating:5.0,reviews:29,
       desc:'A lightweight runner with a cushioned ride and a clean street silhouette. Goes with everything in the rack.',
       colors:[{n:'Black',h:'#1d1d1f'},{n:'Grey',h:'#9a9a9c'},{n:'Flame',h:'#c5552a'}],sizes:SZ_SHOE,fits:['True to size']},
-    {id:'p5',cat:'shirts',brand:'GAP',name:'Checked Flannel',price:1149,mrp:1699,img:'assets/photos/p_shirt2.jpg',tag:'',rating:4.6,reviews:88,
+    {id:'p5',cat:'shirts',brand:'GAP',name:'Checked Flannel',price:1149,mrp:1699,img:'assets/p_shirt2.jpg',tag:'',rating:4.6,reviews:88,
       desc:'Brushed cotton flannel in a soft check. Layer it open or button it up — the cooler-evening essential.',
       colors:[{n:'Rust',h:'#8c3a32'},{n:'Forest',h:'#3a5a44'},{n:'Slate',h:'#3f5168'}],sizes:SZ_TOP,fits:['Regular']},
-    {id:'p6',cat:'shoes',brand:'Adidas',name:'Retro Trainer',price:2499,mrp:3499,img:'assets/photos/p_shoe2.jpg',tag:'NEW',rating:4.8,reviews:163,
+    {id:'p6',cat:'shoes',brand:'Adidas',name:'Retro Trainer',price:2499,mrp:3499,img:'assets/p_shoe2.jpg',tag:'NEW',rating:4.8,reviews:163,
       desc:'A heritage trainer reissued in premium suede and mesh. Vintage lines, modern comfort underfoot.',
       colors:[{n:'Bone',h:'#efece3'},{n:'Grey',h:'#b8b8ba'}],sizes:SZ_SHOE,fits:['True to size']},
-    {id:'p7',cat:'jeans',brand:'H&M',name:'Tapered Wash Jean',price:1399,mrp:1999,img:'assets/photos/p_jeans2.jpg',tag:'',rating:4.5,reviews:74,
+    {id:'p7',cat:'jeans',brand:'H&M',name:'Tapered Wash Jean',price:1399,mrp:1999,img:'assets/p_jeans2.jpg',tag:'',rating:4.5,reviews:74,
       desc:'A relaxed-to-tapered leg in an authentic mid wash. Comfortable through the seat and thigh.',
       colors:[{n:'Light',h:'#8aa0bd'},{n:'Dark',h:'#2c3242'}],sizes:SZ_JEAN,fits:['Tapered','Relaxed']},
-    {id:'p8',cat:'tshirts',brand:'SS Basics',name:'Heavyweight Tee',price:699,mrp:999,img:'assets/photos/p_tee2.jpg',tag:'HOT',rating:4.9,reviews:241,
+    {id:'p8',cat:'tshirts',brand:'SS Basics',name:'Heavyweight Tee',price:699,mrp:999,img:'assets/p_tee2.jpg',tag:'HOT',rating:4.9,reviews:241,
       desc:'Our own heavyweight 240gsm tee with a boxy drop-shoulder. The blank canvas every fit starts from.',
       colors:[{n:'Black',h:'#1d1d1f'},{n:'White',h:'#f1efe6'},{n:'Sand',h:'#c9bda6'}],sizes:SZ_TOP,fits:['Boxy','Regular']},
   ];
@@ -514,8 +526,67 @@
     window.addEventListener('scroll',onScroll,{passive:true});
   }
 
+  /* ===================== SHOPIFY PRODUCT LOADER ===================== */
+  const COLOR_HEX = {black:'#1d1d1f',white:'#f1efe6',navy:'#1b2a4a',blue:'#3a5a8c',sky:'#9db9d6','light blue':'#aac4dd','mid blue':'#5d7290',red:'#b23b3b',green:'#3a5a44',forest:'#3a5a44',grey:'#9a9a9c',gray:'#9a9a9c',beige:'#d8cdb8',brown:'#6b4f3a',tan:'#c9a87a',sand:'#c9bda6',stone:'#d8cdb8',bone:'#efece3',cream:'#efece3',indigo:'#2f3b55',rust:'#8c3a32',olive:'#6b6b3a',maroon:'#5c2a2a',pink:'#d99aa6',yellow:'#d9c24a',orange:'#c5552a',purple:'#5a3a6b',slate:'#3f5168',charcoal:'#2c2c2e',khaki:'#b3a06a'};
+  const hexFor = n => COLOR_HEX[(n||'').toLowerCase().trim()] || '#9a9a9c';
+
+  const SHOP_QUERY = `{
+    products(first: 100) {
+      edges { node {
+        handle title description vendor productType tags
+        featuredImage { url }
+        priceRange { minVariantPrice { amount } }
+        compareAtPriceRange { maxVariantPrice { amount } }
+        options { name values }
+        variants(first: 100) { edges { node { id title availableForSale selectedOptions { name value } } } }
+      } }
+    }
+  }`;
+
+  function mapShopifyProduct(n){
+    const optBy = name => { const o = (n.options||[]).find(o => o.name.toLowerCase() === name); return o ? o.values : []; };
+    const colorsRaw = optBy('color'), sizes = optBy('size'), fits = optBy('fit');
+    const price = Math.round(parseFloat((n.priceRange && n.priceRange.minVariantPrice.amount) || '0'));
+    const mrpRaw = parseFloat((n.compareAtPriceRange && n.compareAtPriceRange.maxVariantPrice.amount) || '0');
+    const tagsU = (n.tags || []).map(t => t.toUpperCase());
+    return {
+      id: n.handle,
+      cat: (n.productType || '').toLowerCase(),
+      brand: n.vendor || '',
+      name: n.title,
+      price,
+      mrp: mrpRaw > price ? Math.round(mrpRaw) : price,
+      img: (n.featuredImage && n.featuredImage.url) || '',
+      tag: tagsU.includes('HOT') ? 'HOT' : (tagsU.includes('NEW') ? 'NEW' : ''),
+      rating: 4.8, reviews: 0,
+      desc: n.description || '',
+      colors: (colorsRaw.length ? colorsRaw : ['Default']).map(c => ({ n: c, h: hexFor(c) })),
+      sizes: sizes.length ? sizes : ['One size'],
+      fits: fits.length ? fits : ['Regular'],
+      _variants: (n.variants && n.variants.edges || []).map(e => e.node)
+    };
+  }
+
+  async function loadShopify(){
+    // Not configured yet → keep the demo products.
+    if(!SHOPIFY.token || SHOPIFY.token.indexOf('YOUR_') === 0 || SHOPIFY.domain.indexOf('YOUR-') === 0) return;
+    try{
+      const res = await fetch(`https://${SHOPIFY.domain}/api/${SHOPIFY.version}/graphql.json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY.token },
+        body: JSON.stringify({ query: SHOP_QUERY })
+      });
+      const json = await res.json();
+      const edges = json && json.data && json.data.products && json.data.products.edges;
+      if(!edges || !edges.length){ console.warn('Shopify returned no products', json && json.errors); return; }
+      PRODUCTS = edges.map(e => mapShopifyProduct(e.node));
+      renderProducts('all'); renderCart();
+    }catch(err){ console.warn('Shopify load failed — using demo products:', err); }
+  }
+
   function init(){
     renderProducts('all'); renderCart(); initFilters(); initCountdown(); observeReveal(); bind(); bindAccountWishlist(); updateAuthIcon(); updateWishCount(); onScroll(); heroIntro();
+    loadShopify();
   }
   if(document.readyState!=='loading') init(); else document.addEventListener('DOMContentLoaded',init);
 })();
